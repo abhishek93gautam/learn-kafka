@@ -120,4 +120,32 @@ public class LibraryEventsConsumerIntegrationTest {
         LibraryEvent persistedLibraryEvent = libraryEventsRepository.findById(libraryEvent.getLibraryEventId()).get();
         assertEquals("The Alchemist", persistedLibraryEvent.getBook().getBookName());
     }
+
+    @Test
+    void publishUpdateLibraryEvent_whenEventIdIsNull() throws ExecutionException, InterruptedException, JsonProcessingException {
+        String json = " {\"libraryEventId\":null,\"libraryEventType\":\"UPDATE\",\"book\":{\"bookId\":456,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
+        kafkaTemplate.sendDefault(json).get();
+
+        CountDownLatch latch = new CountDownLatch(1);
+        latch.await(3,
+                TimeUnit.SECONDS);
+
+        verify(libraryEventsConsumer, times(1)).onMessage(isA(ConsumerRecord.class));
+        verify(libraryEventsService, times(1)).processLibraryEvent(isA(ConsumerRecord.class));
+    }
+
+    @Test
+    void publishUpdateLibraryEvent_whenEventIdIs000() throws ExecutionException, InterruptedException, JsonProcessingException {
+        Integer libraryEventId = 000;
+        String json = " {\"libraryEventId\":"+libraryEventId+",\"libraryEventType\":\"UPDATE\",\"book\":{\"bookId\":456,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
+        kafkaTemplate.sendDefault(json).get();
+
+        CountDownLatch latch = new CountDownLatch(1);
+        latch.await(3,
+                TimeUnit.SECONDS);
+
+        //verify(libraryEventsConsumer, times(3)).onMessage(isA(ConsumerRecord.class));
+        verify(libraryEventsService, times(4)).processLibraryEvent(isA(ConsumerRecord.class));
+        verify(libraryEventsService, times(1)).handleRecovery(isA(ConsumerRecord.class));
+    }
 }
